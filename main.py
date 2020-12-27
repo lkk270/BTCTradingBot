@@ -15,8 +15,7 @@ import robin_stocks.urls as urls
 btc_purchace_price = 0
 btc_sell_price = 0
 
-user = 'rfbsram@gmail.com'
-password = 'z3OxxLtnLb$2&Tx67'
+
 login = r.login(user,password)
 r = RobinhoodCrypto(user, password)
 
