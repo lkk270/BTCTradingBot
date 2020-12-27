@@ -4,9 +4,10 @@ import numpy as np
 import ta as ta
 from pandas.plotting import register_matplotlib_converters
 from ta import *
-from misc import *
-from tradingstats import *
-from config import *
+from robinhood_crypto_api import RobinhoodCrypto
+# from misc import *
+# from tradingstats import *
+# from config import *
 import getpass
 from robinhood_crypto_api import RobinhoodCrypto
 import robin_stocks.helper as helper
@@ -14,13 +15,18 @@ import robin_stocks.urls as urls
 btc_purchace_price = 0
 btc_sell_price = 0
 
+user = 'rfbsram@gmail.com'
+password = 'z3OxxLtnLb$2&Tx67'
+login = r.login(user,password)
+r = RobinhoodCrypto(user, password)
+
 
 def limit_btc_buy(current_price):
-    btc_purchace_price = current_price * 0.95 
+    btc_purchace_price = current_price * 0.995 
     limit_order_info = r.trade(
     'BTCUSD',
     # price=1.00,
-    price=round(float(btc_purchace_price, 2)),
+    price=round(float(btc_purchace_price), 2),
     quantity="0.0001",
     side="buy",
     time_in_force="gtc",
@@ -33,11 +39,11 @@ def limit_btc_buy(current_price):
     # print('canceling limit BUY order {}: {}'.format(order_id, r.order_cancel(order_id)))
 
 def limit_btc_sell(current_price):
-    btc_sell_price = current_price * 1.05
+    btc_sell_price = current_price * 1.005
     limit_order_info = r.trade(
     'BTCUSD',
     # price=1.00,
-    price=round(float(btc_sell_price, 2)),
+    price=round(float(btc_sell_price), 2),
     quantity="0.0001",
     side="sell",
     time_in_force="gtc",
@@ -119,7 +125,7 @@ def get_crypto_info(symbol, info=None):
         data = None
     return(helper.filter(data, info))
 
-    
+
 @helper.login_required
 def get_crypto_quote(symbol, info=None):
     """Gets information about a crypto including low price, high price, and open price
@@ -217,29 +223,33 @@ def get_crypto_historicals(symbol, interval, span, bounds, info=None):
 def go():
     btc_bought = False
     wait_for_fall = False
-    for i in range(100):
+    num_trades = 0
+    while num_trades < 3:
         current_price = float(get_crypto_quote('BTC')['mark_price'])
         history = get_crypto_historicals('BTC', '5minute', 'day', '24_7', None)
         action = golden_cross(current_price, history[252:], 'BTC', 50, 200,  10, "")
-        if (current_price - btc_purchace_price)/btc_purchace_price >= 0.0025 and wait_for_fall == False:
-            wait_for_fall = True
-        elif (current_price - btc_purchace_price)/btc_purchace_price <= 0.0015 and (current_price - btc_purchace_price)/btc_purchace_price > 0  and wait_for_fall:
-             # limit_btc_sell(current_price)
-            btc_bought = False
-            print('sell was falling')
-            wait_for_fall = False
-            continue
+        if btc_purchace_price > 0:
+            if (current_price - btc_purchace_price)/btc_purchace_price >= 0.0025 and wait_for_fall == False:
+                wait_for_fall = True
+            elif (current_price - btc_purchace_price)/btc_purchace_price <= 0.0015 and (current_price - btc_purchace_price)/btc_purchace_price > 0 and wait_for_fall:
+                    limit_btc_sell(current_price)
+                    btc_bought = False
+                    print('sell was falling')
+                    num_trades+=1 
+                    wait_for_fall = False
+                    continue
         if action == 'buy':
             if not btc_bought:
-                # limit_btc_buy(current_price)
+                limit_btc_buy(current_price)
                 btc_bought = True
                 print('buy')
             else:
                 print('hold')
         else:
             if btc_bought:
-                # limit_btc_sell()
+                limit_btc_sell(current_price)
                 btc_bought = False
+                num_trades+=1 
                 print('sell')
             else:
                 print('hold')
