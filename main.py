@@ -85,14 +85,31 @@ def golden_cross(current_price, history, stockTicker, n1, n2, days, direction=""
     #     show_plot(price, sma1, sma2, dates, symbol=stockTicker, label1=str(n1)+" day SMA", label2=str(n2)+" day SMA")
     # return cross
 
-def sell_holdings(symbol, holdings_data):
-    """ Place an order to sell all holdings of a stock.
 
-    Args:
-        symbol(str): Symbol of the stock we want to sell
-        holdings_data(dict): dict obtained from get_modified_holdings() method
+@helper.login_required
+def get_crypto_quote(symbol, info=None):
+    """Gets information about a crypto including low price, high price, and open price
+
+    :param symbol: The crypto ticker.
+    :type symbol: str
+    :param info: Will filter the results to have a list of the values that correspond to key that matches info.
+    :type info: Optional[str]
+    :returns: [dict] If info parameter is left as None then the list will contain a dictionary of key/value pairs for each ticker. \
+    Otherwise, it will be a list of strings where the strings are the values of the key that corresponds to info.
+    :Dictionary Keys: * asset_currency
+                      * display_only
+                      * id
+                      * max_order_size
+                      * min_order_size
+                      * min_order_price_increment
+                      * min_order_quantity_increment
+                      * name
+                      * quote_currency
+                      * symbol
+                      * tradability
+
     """
-    shares_owned = int(float(holdings_data[symbol].get("quantity")))
-    if not debug:
-        r.order_sell_market(symbol, shares_owned)
-    print("####### Selling " + str(shares_owned) + " shares of " + symbol + " #######")
+    id = get_crypto_info(symbol, info='id')
+    url = urls.crypto_quote(id)
+    data = helper.request_get(url)
+    return(helper.filter(data, info))
