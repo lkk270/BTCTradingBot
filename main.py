@@ -11,6 +11,8 @@ import getpass
 from robinhood_crypto_api import RobinhoodCrypto
 import robin_stocks.helper as helper
 import robin_stocks.urls as urls
+btc_purchace_price = 0
+btc_sell_price = 0
 
 
 def limit_btc_buy(current_price):
@@ -86,6 +88,38 @@ def golden_cross(current_price, history, stockTicker, n1, n2, days, direction=""
     # return cross
 
 
+def get_crypto_info(symbol, info=None):
+    """Gets information about a crpyto currency.
+
+    :param symbol: The crypto ticker.
+    :type symbol: str
+    :param info: Will filter the results to have a list of the values that correspond to key that matches info.
+    :type info: Optional[str]
+    :returns: [dict] If info parameter is left as None then will return a dictionary of key/value pairs for each ticker. \
+    Otherwise, it will be a strings representing the value of the key.
+    :Dictionary Keys: * asset_currency
+                      * display_only
+                      * id
+                      * max_order_size
+                      * min_order_size
+                      * min_order_price_increment
+                      * min_order_quantity_increment
+                      * name
+                      * quote_currency
+                      * symbol
+                      * tradability
+
+    """
+    url = urls.crypto_currency_pairs()
+    data = helper.request_get(url, 'results')
+    data = [x for x in data if x['asset_currency']['code'] == symbol]
+    if len(data) > 0:
+        data = data[0]
+    else:
+        data = None
+    return(helper.filter(data, info))
+
+    
 @helper.login_required
 def get_crypto_quote(symbol, info=None):
     """Gets information about a crypto including low price, high price, and open price
