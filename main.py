@@ -178,3 +178,37 @@ def get_crypto_historicals(symbol, interval, span, bounds, info=None):
         histData.append(subitem)
 
     return(helper.filter(histData, info))
+
+
+def go():
+    btc_bought = False
+    wait_for_fall = False
+    for i in range(100):
+        current_price = float(get_crypto_quote('BTC')['mark_price'])
+        history = get_crypto_historicals('BTC', '5minute', 'day', '24_7', None)
+        action = golden_cross(current_price, history[252:], 'BTC', 50, 200,  10, "")
+        if (current_price - btc_purchace_price)/btc_purchace_price >= 0.0025 and wait_for_fall == False:
+            wait_for_fall = True
+        elif (current_price - btc_purchace_price)/btc_purchace_price <= 0.0015 and (current_price - btc_purchace_price)/btc_purchace_price > 0  and wait_for_fall:
+             # limit_btc_sell(current_price)
+            btc_bought = False
+            print('sell was falling')
+            wait_for_fall = False
+            continue
+        if action == 'buy':
+            if not btc_bought:
+                # limit_btc_buy(current_price)
+                btc_bought = True
+                print('buy')
+            else:
+                print('hold')
+        else:
+            if btc_bought:
+                # limit_btc_sell()
+                btc_bought = False
+                print('sell')
+            else:
+                print('hold')
+        print('============================')
+
+go()
