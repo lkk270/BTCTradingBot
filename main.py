@@ -5,6 +5,7 @@ import ta as ta
 from pandas.plotting import register_matplotlib_converters
 from ta import *
 from robinhood_crypto_api import RobinhoodCrypto
+import csv
 # from misc import *
 # from tradingstats import *
 # from config import *
@@ -19,9 +20,37 @@ btc_sell_price = 0
 login = r.login(user,password)
 r = RobinhoodCrypto(user, password)
 
+trades = []
+order_id = ''
+
+# TODO check if buy or sell has actually executed 
+
+def add_to_csv(dictionary):
+    csv_columns = ['trade_type', 'quantity', 'price_bought', 'price_sold', 'percent_change', 'profit']
+    csv_file = "trades.csv"
+    try:
+        with open(csv_file, 'w') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+            writer.writeheader()
+            for data in dictionary:
+                writer.writerow(data)
+    except IOError:
+        print("I/O error")
+
+def add_to_trades(trade_type, quantity, price_bought, price_sold, percent_change, profit):
+    trade = {
+        "trade_type": trade_type,
+        'quantity': quantity, 
+        'price_bought': price_bought, 
+        'price_sold': price_sold,
+        'percent_change':  percent_change,
+        'profit': profit
+    }
+    trades.append(trade)
+
 
 def limit_btc_buy(current_price):
-    btc_purchace_price = current_price * 0.995 
+    btc_purchace_price = current_price
     limit_order_info = r.trade(
     'BTCUSD',
     # price=1.00,
@@ -38,7 +67,7 @@ def limit_btc_buy(current_price):
     # print('canceling limit BUY order {}: {}'.format(order_id, r.order_cancel(order_id)))
 
 def limit_btc_sell(current_price):
-    btc_sell_price = current_price * 1.005
+    btc_sell_price = current_price
     limit_order_info = r.trade(
     'BTCUSD',
     # price=1.00,
@@ -66,12 +95,12 @@ def golden_cross(current_price, history, stockTicker, n1, n2, days, direction=""
         # print(item)
         closingPrices.append(float(item['close_price']))
         dates.append(item['begins_at'])
-        print(float(item['close_price']), item['begins_at'])
+        # print(float(item['close_price']), item['begins_at'])
         total_price += float(item['close_price'])
         count+=1
     print('currenct_price: ', current_price)
-    print('total_price: ', total_price)
-    print('count: ', count)
+    # print('total_price: ', total_price)
+    # print('count: ', count)
     ema = total_price/count
     print('ema: ', ema)
 
@@ -219,6 +248,14 @@ def get_crypto_historicals(symbol, interval, span, bounds, info=None):
     return(helper.filter(histData, info))
 
 
+def get_high_percentage(current_price):
+    percent_change = (current_price - btc_purchace_price)/btc_purchace_price
+    difference = percent_change - 0.0025
+    if percent_change > 0.0025:
+        return percent_change, difference
+    else:
+        return 0.0025, 0
+
 def go():
     btc_bought = False
     wait_for_fall = False
@@ -227,31 +264,33 @@ def go():
         current_price = float(get_crypto_quote('BTC')['mark_price'])
         history = get_crypto_historicals('BTC', '5minute', 'day', '24_7', None)
         action = golden_cross(current_price, history[252:], 'BTC', 50, 200,  10, "")
+        percent_change, difference = get_high_percentage(current_price)
         if btc_purchace_price > 0:
-            if (current_price - btc_purchace_price)/btc_purchace_price >= 0.0025 and wait_for_fall == False:
+            if (current_price - btc_purchace_price)/btc_purchace_price >= percent_change and wait_for_fall == False:
                 wait_for_fall = True
-            elif (current_price - btc_purchace_price)/btc_purchace_price <= 0.0015 and (current_price - btc_purchace_price)/btc_purchace_price > 0 and wait_for_fall:
-                    limit_btc_sell(current_price)
+            elif (current_price - btc_purchace_price)/btc_purchace_price <= 0.0015 + difference and (current_price - btc_purchace_price)/btc_purchace_price > 0 and wait_for_fall and btc_bought:
+                    # limit_btc_sell(current_price)
                     btc_bought = False
-                    print('sell was falling')
+                    print('sell, was falling')
                     num_trades+=1 
                     wait_for_fall = False
                     continue
         if action == 'buy':
             if not btc_bought:
-                limit_btc_buy(current_price)
+                # limit_btc_buy(current_price)
                 btc_bought = True
                 print('buy')
             else:
                 print('hold')
         else:
-            if btc_bought:
-                limit_btc_sell(current_price)
+            if btc_bought and current_price >= btc_purchace_price:
+                # limit_btc_sell(current_price)
                 btc_bought = False
                 num_trades+=1 
                 print('sell')
             else:
                 print('hold')
+        print(r.order_status(order_id))
         print('============================')
 
 go()
